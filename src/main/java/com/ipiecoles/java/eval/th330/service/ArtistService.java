@@ -1,7 +1,8 @@
 package com.ipiecoles.java.eval.th330.service;
 
+import com.ipiecoles.java.eval.th330.exception.ConflitException;
+import com.ipiecoles.java.eval.th330.model.Album;
 import com.ipiecoles.java.eval.th330.model.Artist;
-import com.ipiecoles.java.eval.th330.repository.AlbumRepository;
 import com.ipiecoles.java.eval.th330.repository.ArtistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ArtistService {
@@ -20,7 +22,7 @@ public class ArtistService {
     private ArtistRepository artistRepository;
 
     @Autowired
-    private AlbumRepository albumRepository;
+    private AlbumService albumService;
 
     public Page<Artist> findAllArtists(Integer page, Integer size, String sortProperty, String sortDirection) {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDirection),sortProperty);
@@ -40,11 +42,22 @@ public class ArtistService {
         return artistRepository.count();
     }
 
-    public Artist creerArtiste(Artist artist) {
-        return artistRepository.save(artist);
+    public Artist creerArtiste(Artist artist) throws ConflitException {
+        if (artistRepository.existsByNameIgnoreCase(artist.getName())){
+            throw new ConflitException("L'artise " + artist.getName() + " existe déjà");
+        }else{
+            return artistRepository.save(artist);
+        }
     }
 
     public void deleteArtist(Long id) {
+        //Supprimer les albums
+        Set<Album> albums = findById(id).getAlbums();
+        for (Album a : albums){
+            albumService.deleteAlbum(a.getId());
+        }
+
+        //Supprimer l'artiste
         artistRepository.deleteById(id);
     }
 
